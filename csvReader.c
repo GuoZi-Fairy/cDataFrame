@@ -26,6 +26,9 @@ typedef struct _error
 }error;
 static error _index_invild_error = {"index error","The index may "};
 static error _file_read_error = {"file read error","catch a error when reading the file"};
+static error _cell_parser_error = {"cell parse error","please check your data,have a invild token:{\'\\r\',\'\\n\'"};
+static error _token_parser_error = {"token parse error","something wrong in the \',\'"};
+static error _filestream_error = {"file colse error","the file stream colse unsuccessed"};
 #define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
 /*************************************************************/
 static STDCAL(column*) columns_parse(const char* first_line);//传入第一行 解析出列名和索引数 返回一个col序列
@@ -130,6 +133,8 @@ static STDCAL(size_t) columns_width(column* col_obj)
 
 /************************************************************************************/
 /** cell_op **/
+#define CELLBUF_STR_LENGTH 200
+#define LINEBUF_STR_LENGTH 2048
 static STDCAL(boolean_csv) cell_parser_interge(const char* one_cell);
 static STDCAL(boolean_csv) cell_parser_float(const char* one_cell);
 static STDCAL(boolean_csv) cell_parser_null(const char* one_cell);
@@ -164,12 +169,7 @@ static STDCAL(boolean_csv) cell_parser_null(const char* one_cell)
 static STDCAL(cell) cell_parser(const char* one_cell)
 {
     cell ret;
-    if(cell_parser_null(one_cell))
-    {
-        ret.type = rnull;
-        strcpy(ret.data.nan,"NAN");
-    }
-    else if(cell_parser_interge(one_cell))
+    if(cell_parser_interge(one_cell))
     {
         ret.type=rint;
         ret.data.integer_num = atoi(one_cell);
@@ -179,15 +179,30 @@ static STDCAL(cell) cell_parser(const char* one_cell)
         ret.type = rfloat;
         ret.data.float_num = atof(one_cell);
     }
+    else if(cell_parser_null(one_cell))
+    {
+        ret.type = rnull;
+        strcpy(ret.data.nan,"NAN\0");
+    }
     else
     {
         ret.type = rchar;
         memset(ret.data.char_ch,'\0',200);
-        strcpy(ret.data.char_ch,one_cell);
+        if(*one_cell == '\"')//去除" "
+        {
+            const char* strptr = one_cell+1;
+            char buf[CELLBUF_STR_LENGTH] = {'\0'};
+            size_t iter =0;
+            for(iter = 0; *strptr != '\0'; iter++)buf[iter] = *strptr++;
+            buf[iter-1] = '\0';
+            strcpy(ret.data.char_ch,buf);
+        }
+        else strcpy(ret.data.char_ch,one_cell);
     }
     return ret;
 }
 /************************************************************************************/
+
 static STDCAL(FILE*) reader_getline(FILE* fp,char* buf);//从文件中读取一行
 static STDCAL(FILE*) reader_getline(FILE* fp,char* buf)
 {
@@ -218,58 +233,148 @@ static STDCAL(FILE*) reader_getline(FILE* fp,char* buf)
     reader_getline_out:
     return fp;
 }
+#define WHITESPACE_SKIP(strptr) while(*strptr==' ') strptr++
+static STDCAL(char*) cellstr_get(char buf[CELLBUF_STR_LENGTH],char* str)
+{
+    char* strptr = str;
+    size_t iter = 0;
+    WHITESPACE_SKIP(strptr);
+    switch(*strptr)
+    {
+        case '\"':
+        {
+            buf[iter++] = '\"';
+            strptr++;
+            while(*strptr!='\"') 
+            {
+                switch(*strptr)
+                {
+                    case '\\': //处理转义字符
+                    {
+                        strptr++;
+                        switch(*strptr)
+                        {
+                            case '\"':
+                                buf[iter++] = '\"';
+                                break;
+                            case 't':
+                                buf[iter++] = '\t';
+                                break;
+                            case 'a':
+                                buf[iter++] = '\a';
+                                break;
+                            case '\'':
+                                buf[iter++] = '\'';
+                                break;
+                            default:
+                                buf[iter++] = '\\';
+                                buf[iter++] = *strptr;
+                                break;
+
+                        }
+                        strptr++;
+                        break;
+                    }
+                    case '\r':
+                    case '\n':
+                        RAISE(_cell_parser_error);
+                        break;
+                    default:
+                        buf[iter++] = *strptr++;
+                        break;
+                }
+            }
+            buf[iter++] = *strptr++;
+            break;
+        }
+        default:
+        {
+            while(*strptr!=','&& *strptr!='\r'&& *strptr!='\n'&& *strptr != '\0') buf[iter++] = *strptr++;
+        }
+    }
+    return strptr;
+}
 extern STDCAL(dataframe) read_csv(const char* path)
 {
     dataframe ret;
     size_t length;
     size_t width;
     FILE* csvfp = fopen(path,"r");
-    char buf[2048];
+    char buf[LINEBUF_STR_LENGTH];
     csvfp = reader_getline(csvfp,buf);
     column* col_obj = columns_parse(buf);
     ret.col = col_obj;
-    while (csvfp != NULL)
+    while (!feof(csvfp) && !ferror(csvfp) && csvfp != NULL)
     {
         csvfp = reader_getline(csvfp,buf);
         char* bufptr = buf;
-        char cell_buf[200] = {'\0'};
-        size_t iter = 0;
+        char cell_buf[CELLBUF_STR_LENGTH] = {'\0'};
         size_t col_index = 0;
-        while (!(*bufptr=='\r' || *bufptr=='\n')&&*bufptr!='\0')
+        while (!(*bufptr=='\r' || *bufptr=='\n') && *bufptr!='\0')
         {   
-            switch (*bufptr)
-            {
-                case ',':
-                {
-                    cell cell_obj = cell_parser(cell_buf);
-                    putcell(get_column(col_obj,col_index),&cell_obj);
-                    col_index++;
-                    bufptr++;
-                    iter=0;
-                    memset(cell_buf,'\0',200);
-                    break;
-                }
-                default:
-                    cell_buf[iter] = *bufptr;
-                    iter++;
-                    bufptr++;
-                    break;
-            }
-        }
-        if(*bufptr=='\r'||*bufptr=='\n')
-        {
+            bufptr = cellstr_get(cell_buf,bufptr);
             cell cell_obj = cell_parser(cell_buf);
             putcell(get_column(col_obj,col_index),&cell_obj);
-            col_index++;
-            bufptr++;
-            iter=0;
-            memset(cell_buf,'\0',200);
+            memset(cell_buf,'\0',CELLBUF_STR_LENGTH);
+            switch(*bufptr)
+            {
+                case ',':
+                    bufptr++;
+                    col_index++;
+                    break;
+                case '\r':
+                case '\n':
+                case '\0':
+                    break;
+                default:
+                    RAISE(_token_parser_error);
+                    break;
+            }
         }
     }
     fclose(csvfp);
     ret.width = columns_width(col_obj) -1;//-1是因为从0计数
     ret.length = col_obj->series.top -1;//-1是减去最后一次putcell的多余的加法
     return ret;
+}
+extern STDCAL(void) df_to_csv(dataframe* df,const char* path)
+{
+    FILE* dstn_fp = fopen(path,"w+");
+    size_t wide,len;
+    column* col_list[200] = {NULL};
+    column* col_obj = df->col;//拷贝一份col,注:该指针会发生改变,若需链表头，可直接访问df->col
+    size_t iter;
+    for(iter = 0;col_obj!=NULL;iter++)
+    {
+        col_list[iter] = col_obj;
+        col_obj = col_obj->next_col;//此处为col_obj发生改变的地方
+    }
+    for(len = 0; len < df->length; len++)
+    {
+        for(wide =0; wide< iter; wide++)
+        {
+            cell* cell_obj = col_list[wide]->series.cell_table + len;
+            switch(cell_obj->type)
+            {
+                case rint:
+                    fprintf_s(dstn_fp,"%lld",cell_obj->data.integer_num);
+                    break;
+                case rfloat:
+                    fprintf_s(dstn_fp,"%lf",cell_obj->data.float_num);
+                    break;
+                case rchar:
+                    fprintf_s(dstn_fp,"\"%s\"",cell_obj->data.char_ch);
+                    break;
+                case rnull:
+                    fprintf_s(dstn_fp,"");
+                    break;
+            }
+            if(wide != iter -1)fprintf_s(dstn_fp,",");
+        }
+        fprintf_s(dstn_fp,"\r\n");
+    }
+    if(fclose(dstn_fp)==EOF)RAISE(_filestream_error);
+    else printf("\n[file stream colse safely]");
 }
 /************************************************************************************/
 extern STDCAL(column*) colfind(dataframe* df,size_t index)
@@ -353,3 +458,4 @@ extern STDCAL(void) dfprint(dataframe* df)
     }
 }
 /************************************************************************************/
+

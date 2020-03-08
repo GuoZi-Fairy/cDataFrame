@@ -16,7 +16,7 @@ typedef enum type
 typedef union _element //cell的数据用此类型
 {
     char char_ch[200];//不能超过99个字节
-    int integer_num;
+    size_t integer_num;
     double float_num;
     char nan[4];
 }element;
