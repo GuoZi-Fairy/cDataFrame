@@ -1,4 +1,5 @@
 #include <stdio.h>
+#define CSVREADER_H
 #define COL_NAME_LENGTH_MAX 100
 #define CSVREADER_STDCAL(type) type __cdecl
 typedef struct _series serise;
@@ -6,12 +7,13 @@ typedef union _element element;
 typedef struct _cell cell;
 typedef struct _columns column;
 typedef struct _dataframe dataframe;
-typedef enum type
+typedef enum type //sortation means the priority
 {
+    rnull,
+    rnan,
     rint,
     rfloat,
     rchar,
-    rnull,
 }type;
 typedef union _element //cell的数据用此类型
 {
@@ -38,15 +40,17 @@ typedef struct _columns //列的序列
     char name[COL_NAME_LENGTH_MAX];
     struct _columns* next_col;
     series series;
+    type coltype;
 }column;
 typedef struct _dataframe //数据表
 {
     size_t length;
     size_t width;
     column* col;
+    char calculable;
 }dataframe;
 
-extern CSVREADER_STDCAL(void) dfprint(dataframe* df);
+extern CSVREADER_STDCAL(void) dfprint(dataframe* df,int preview);
 extern CSVREADER_STDCAL(void) colprint(column* col_obj,char sep);
 extern CSVREADER_STDCAL(void) cellprint(cell* cell_obj);
 extern CSVREADER_STDCAL(cell*) cellfind(dataframe* df,size_t col_index,size_t index);

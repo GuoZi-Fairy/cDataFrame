@@ -29,6 +29,7 @@ static error _file_read_error = {"file read error","catch a error when reading t
 static error _cell_parser_error = {"cell parse error","please check your data,have a invild token:{\'\\r\',\'\\n\'"};
 static error _token_parser_error = {"token parse error","something wrong in the \',\'"};
 static error _filestream_error = {"file colse error","the file stream colse unsuccessed"};
+static error _cell_type_error = {"Cell type invild","please check this cell's type"};
 #define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
 /*************************************************************/
 static STDCAL(column*) columns_parse(const char* first_line);//传入第一行 解析出列名和索引数 返回一个col序列
@@ -64,6 +65,7 @@ static STDCAL(column*) columns_parse(const char* first_line)
 {
     const char* ch =first_line;
     column* columns = (column*)malloc(sizeof(column));
+    columns->coltype = rnull;
     new_series(columns);
     memset(columns->name,'\0',100);
     columns->next_col = NULL;
@@ -82,6 +84,7 @@ static STDCAL(column*) columns_parse(const char* first_line)
                 columns->next_col = (column*)malloc(sizeof(column));
                 new_series(columns->next_col);
                 columns = columns->next_col;//进入下一个col
+                columns->coltype = rnull;
                 memset(columns->name,'\0',100);//初始化col
                 columns->next_col = NULL;
                 _strset(buf,'\0');//清空缓冲
@@ -137,7 +140,7 @@ static STDCAL(size_t) columns_width(column* col_obj)
 #define LINEBUF_STR_LENGTH 2048
 static STDCAL(boolean_csv) cell_parser_interge(const char* one_cell);
 static STDCAL(boolean_csv) cell_parser_float(const char* one_cell);
-static STDCAL(boolean_csv) cell_parser_null(const char* one_cell);
+static STDCAL(boolean_csv) cell_parser_nan(const char* one_cell);
 static STDCAL(boolean_csv) cell_parser_interge(const char* one_cell)//判断是否为整数
 {
     if(*one_cell=='-')one_cell++;
@@ -161,7 +164,7 @@ static STDCAL(boolean_csv) cell_parser_float(const char* one_cell)//判断是否
     if(count!=1)return cFALSE;
     return cTRUE;
 }
-static STDCAL(boolean_csv) cell_parser_null(const char* one_cell)
+static STDCAL(boolean_csv) cell_parser_nan(const char* one_cell)
 {
     if(*one_cell=='\0')return cTRUE;
     else return cFALSE;
@@ -179,9 +182,9 @@ static STDCAL(cell) cell_parser(const char* one_cell)
         ret.type = rfloat;
         ret.data.float_num = atof(one_cell);
     }
-    else if(cell_parser_null(one_cell))
+    else if(cell_parser_nan(one_cell))
     {
-        ret.type = rnull;
+        ret.type = rnan;
         strcpy(ret.data.nan,"NAN\0");
     }
     else
@@ -335,6 +338,7 @@ extern STDCAL(dataframe) read_csv(const char* path)
     fclose(csvfp);
     ret.width = columns_width(col_obj) -1;//-1是因为从0计数
     ret.length = col_obj->series.top -1;//-1是减去最后一次putcell的多余的加法
+    ret.calculable = cFALSE;
     return ret;
 }
 extern STDCAL(void) df_to_csv(dataframe* df,const char* path)
@@ -358,16 +362,17 @@ extern STDCAL(void) df_to_csv(dataframe* df,const char* path)
             {
                 case rint:
                     fprintf_s(dstn_fp,"%lld",cell_obj->data.integer_num);
-                    break;
+                break;
                 case rfloat:
                     fprintf_s(dstn_fp,"%lf",cell_obj->data.float_num);
-                    break;
+                break;
                 case rchar:
                     fprintf_s(dstn_fp,"\"%s\"",cell_obj->data.char_ch);
-                    break;
+                break;
                 case rnull:
+                case rnan:
                     fprintf_s(dstn_fp,"");
-                    break;
+                break;
             }
             if(wide != iter -1)fprintf_s(dstn_fp,",");
         }
@@ -419,24 +424,44 @@ extern STDCAL(void) cellprint(cell* cell_obj)//输出一个cell
     }
     switch(cell_obj->type)
     {
-        case 0:
-            printf("%d",cell_obj->data.integer_num);
+        case rint:
+            printf("%lld",cell_obj->data.integer_num);
             break;
-        case 1:
+        case rfloat:
             printf("%lf",cell_obj->data.float_num);
             break;
-        case 2:
+        case rchar:
             printf("%s",cell_obj->data.char_ch);
             break;
-        case 3:
+        case rnan:
             printf("NAN");
             break;
+        case rnull:
+            RAISE(_cell_type_error);
     }
 }
-extern STDCAL(void) dfprint(dataframe* df)
+#define COLLIST_LEN 200
+#define INIT_COLLIST(col_list)
+#define CUTOFF_LINE "------------------------------------------------------------------------------"
+#define OMIT_LINE ".............................................................................."
+static STDCAL(void) foreach_cellprint(dataframe* df, column* collist[200], size_t length, size_t width)
 {
     size_t wide,len;
-    column* col_list[200] = {NULL};
+    for(len = 0;len < length;len++)
+    {
+        for(wide =0;wide < width;wide++)
+        {
+            cell* cell_obj = collist[wide]->series.cell_table + len;
+            cellprint(cell_obj);
+            putchar('\t');
+        }
+        putchar('\n');
+    }
+}
+extern STDCAL(void) dfprint(dataframe* df,int preview)//预览  只有0 或 非0
+{
+    size_t wide,len;
+    column* col_list[COLLIST_LEN] = {NULL};
     column* col_obj = df->col;//拷贝一份col,注:该指针会发生改变,若需链表头，可直接访问df->col
     size_t iter;
     for(iter = 0;col_obj!=NULL;iter++)
@@ -445,17 +470,14 @@ extern STDCAL(void) dfprint(dataframe* df)
         col_obj = col_obj->next_col;//此处为col_obj发生改变的地方
     }
     colprint(df->col,'\t');
-    putchar('\n');
-    for(len = 0;len < df->length;len++)
-    {
-        for(wide =0;wide < iter;wide++)
-        {
-            cell* cell_obj = col_list[wide]->series.cell_table + len;
-            cellprint(cell_obj);
-            putchar('\t');
-        }
-        putchar('\n');
+    if(preview){
+        foreach_cellprint(df,col_list,5,iter);
+        printf(OMIT_LINE);
     }
+    else foreach_cellprint(df,col_list,df->length,iter);
+    printf("\n[%lldx%lld]\n",df->length,df->width);
+    printf(CUTOFF_LINE);
+    putchar('\n');
+
 }
 /************************************************************************************/
-
