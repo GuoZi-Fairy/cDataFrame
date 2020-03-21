@@ -98,6 +98,10 @@ static STDCAL(double) __floatMEAN__(column* col_obj)
 {
     assert(col_obj->coltype == rfloat);
     return __floatSUM__(col_obj)/(col_obj->series.top -1 );
-
 }
 /*********************************************************************/
+/** match by num op **/
+static STDCAL(size_t) __match__(char* expr)
+{
+    
+}
