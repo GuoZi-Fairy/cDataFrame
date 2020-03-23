@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "cDataFrame.h"
+#include "statu_p.h"
 #include <assert.h>
 #include <Windows.h>
 #ifndef CSVREADER_H
@@ -53,11 +53,11 @@ extern STDCAL(void) operate_trans(dataframe* df,dfbool calc_ability)
 }
 /*********************************************************************/
 /** 数值型操作{float,int} **/
-#define dfsum(COL_OBJ,SUM) do{\
+#define DFSUM(COL_OBJ,SUM) do{\
     if(COL_OBJ->coltype == rint) SUM = __integerSUM__(COL_OBJ);\
     else if(COL_OBJ->coltype == rfloat) SUM = __floatSUM__(COL_OBJ);\
 } while(0)
-#define dfmean(COL_OBJ,MEAN) do{\
+#define SFMEAN(COL_OBJ,MEAN) do{\
     if(COL_OBJ->coltype == rint) MEAN = __integerMEAN__(COL_OBJ);\
     else if(COL_OBJ->coltype == rfloat) MEAN = __floatMEAN__(COL_OBJ);\
 } while(0)
@@ -99,9 +99,26 @@ static STDCAL(double) __floatMEAN__(column* col_obj)
     assert(col_obj->coltype == rfloat);
     return __floatSUM__(col_obj)/(col_obj->series.top -1 );
 }
-/*********************************************************************/
-/** match by num op **/
-static STDCAL(size_t) __match__(char* expr)
+extern STDCAL(cell) dfsum(dataframe* df,size_t index)
 {
-    
+    assert(df->calculable == dfTRUE);
+    cell ret = {0,rnull};
+    column* col = colfind(df,index);
+    if(col->coltype == rint)
+    {
+        long long sum = 0;
+        ret.type = rint;
+        DFSUM(col, sum);
+        ret.data.integer_num = sum;
+    }
+    else if(col->coltype == rfloat)
+    {
+        double sum = 0.0;
+        ret.type = rfloat;
+        DFSUM(col, sum);
+        ret.data.float_num = sum;
+    }
+    else assert(col->coltype == rint || col->coltype == rfloat);
+    return ret;
 }
+/*********************************************************************/
