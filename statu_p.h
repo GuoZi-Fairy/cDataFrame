@@ -2,6 +2,12 @@
     #define CSVREADER_H
     #include "csvReader.h"
 #endif
+
+#ifndef DATAFRAME_H 
+    #define DATAFRAME_H
+    #include "dataframe.h"
+#endif
+
 #define STATU_P_H
 typedef enum _boolean
 {

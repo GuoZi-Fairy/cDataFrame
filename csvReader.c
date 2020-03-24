@@ -5,6 +5,16 @@
 #include <assert.h>
 #include <string.h>
 #include <Windows.h>
+#ifdef WIN32
+#include <io.h>
+#endif
+#ifdef linux
+#include <unistd.h>
+#endif
+#ifndef DATAFRAME_H 
+    #define DATAFRAME_H
+    #include "dataframe.h"
+#endif
 #define STDCAL(type) type __cdecl
 
 typedef struct parser
@@ -30,6 +40,7 @@ static error _cell_parser_error = {"cell parse error","please check your data,ha
 static error _token_parser_error = {"token parse error","something wrong in the \',\'"};
 static error _filestream_error = {"file colse error","the file stream colse unsuccessed"};
 static error _cell_type_error = {"Cell type invild","please check this cell's type"};
+static error _file_existence_error = {"file does not exist","please check the file"};
 #define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
 /*************************************************************/
 static STDCAL(column*) columns_parse(const char* first_line);//传入第一行 解析出列名和索引数 返回一个col序列
@@ -307,8 +318,14 @@ static STDCAL(char*) cellstr_get(char buf[CELLBUF_STR_LENGTH],char* str)
     }
     return strptr;
 }
+
 extern STDCAL(dataframe) read_csv(const char* path)
 {
+    if(_access(path,0)== -1)
+    {
+        printf("%s",path);
+        RAISE(_file_existence_error);
+    }
     dataframe ret;
     size_t length;
     size_t width;

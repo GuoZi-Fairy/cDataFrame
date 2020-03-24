@@ -1,3 +1,7 @@
+#ifndef CSVREADER_H
+    #define CSVREADER_H
+    #include "csvReader.h"
+#endif
 typedef enum _num_type
 {
     num_float,
