@@ -98,7 +98,7 @@ static STDCAL(column*) columns_parse(const char* first_line)
                 columns->coltype = rnull;
                 memset(columns->name,'\0',100);//初始化col
                 columns->next_col = NULL;
-                _strset(buf,'\0');//清空缓冲
+                memset(buf,'\0',COL_NAME_LENGTH_MAX);//清空缓冲
                 iter = 0;
                 break;
                 }
@@ -388,22 +388,22 @@ extern STDCAL(void) df_to_csv(dataframe* df,const char* path)
             switch(cell_obj->type)
             {
                 case rint:
-                    fprintf_s(dstn_fp,"%lld",cell_obj->data.integer_num);
+                    fprintf(dstn_fp,"%lld",cell_obj->data.integer_num);
                 break;
                 case rfloat:
-                    fprintf_s(dstn_fp,"%lf",cell_obj->data.float_num);
+                    fprintf(dstn_fp,"%lf",cell_obj->data.float_num);
                 break;
                 case rchar:
-                    fprintf_s(dstn_fp,"\"%s\"",cell_obj->data.char_ch);
+                    fprintf(dstn_fp,"\"%s\"",cell_obj->data.char_ch);
                 break;
                 case rnull:
                 case rnan:
-                    fprintf_s(dstn_fp,"");
+                    fprintf(dstn_fp,"");
                 break;
             }
-            if(wide != iter -1)fprintf_s(dstn_fp,",");
+            if(wide != iter -1)fprintf(dstn_fp,",");
         }
-        fprintf_s(dstn_fp,"\r\n");
+        fprintf(dstn_fp,"\r\n");
     }
     if(fclose(dstn_fp)==EOF)RAISE(_filestream_error);
     else printf("\n[file stream colse safely]");
