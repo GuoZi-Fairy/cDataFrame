@@ -9,5 +9,6 @@ int main(int argc, char const *argv[])
     operate_trans(&df,dfTRUE); //将df转化为可统计对象
     cell sum = dfsum(&df,0); // 获取df第一列的和
     cellprint(&sum); //输出和
+    dffree(&df);
     return 0;
 }

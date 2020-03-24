@@ -116,6 +116,16 @@ static STDCAL(void) columns_free(column* columns)
         free(columns);
     }
 }
+extern STDCAL(void) dffree(dataframe* df)
+{
+    column* columns = df->col;
+    if (columns!=NULL)
+    {
+        columns_free(columns->next_col);
+        free(columns->series.cell_table);
+        free(columns);
+    }
+}
 static STDCAL(column*) get_column(column* col_obj,size_t index)
 {
     get_column_recursion://用于取消递归

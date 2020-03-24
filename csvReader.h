@@ -57,3 +57,4 @@ extern CSVREADER_STDCAL(cell*) cellfind(dataframe* df,size_t col_index,size_t in
 extern CSVREADER_STDCAL(dataframe) read_csv(const char* path);
 extern CSVREADER_STDCAL(char*) colname(column* col_obj,size_t index);
 extern CSVREADER_STDCAL(column*) colfind(dataframe* df,size_t index);//获取df中的第index个col对象
+extern CSVREADER_STDCAL(void) dffree(dataframe* df);
