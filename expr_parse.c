@@ -228,8 +228,5 @@ STDCAL(void) eval(const char* expr)
 		cacl(&numStack,pop_ret);
 	}
 }
-int main(int argc, char const *argv[])
-{
-	eval("(-10+20)+30*500");
-	return 0;
-}
+#define evall(expr) expr
+

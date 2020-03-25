@@ -2,6 +2,8 @@
     "C_Cpp.errorSquiggles": "Disabled",
     "files.associations": {
         "*.bin": "plaintext",
-        "dataframe.h": "c"
-    }
+        "dataframe.h": "c",
+        "csvreader.h": "c"
+    },
+    "C_Cpp.dimInactiveRegions": false
 }

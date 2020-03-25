@@ -5,16 +5,8 @@
 #include <assert.h>
 #include <string.h>
 #include <Windows.h>
-#ifdef WIN32
 #include <io.h>
-#endif
-#ifdef linux
-#include <unistd.h>
-#endif
-#ifndef DATAFRAME_H 
-    #define DATAFRAME_H
-    #include "dataframe.h"
-#endif
+#include "dataframe.h"
 #define STDCAL(type) type __cdecl
 
 typedef struct parser
