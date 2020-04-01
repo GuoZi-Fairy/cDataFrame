@@ -28,15 +28,3 @@ typedef enum matchbool
     }\
 }while(0)
 //destn应该是一个足够大(可以装下所有匹配项的索引)的整数型的线性数组
-int main(int argc, char const *argv[])
-{
-    SetConsoleOutputCP(65001); 
-    dataframe df = read_csv("test.csv");
-    operate_trans(&df,dfTRUE);
-    dfprint(&df,dfTRUE);
-    size_t desn[1000] = {0};
-    dataframe* dfobj = &df;
-    MATCH(dfobj,0,x > 1000,desn);
-    for(size_t i = 0; i< 1000;i++)printf("%lld\n",desn[i]);
-    return 0;
-}

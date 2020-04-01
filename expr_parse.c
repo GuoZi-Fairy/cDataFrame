@@ -9,14 +9,15 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
+#include "dataframe.h"
 #define STDCAL(type) _cdecl type
 #define STACKSIZE 200
-typedef enum exprBool
+typedef enum __exprBool
 {
 	exprFalse,
 	exprTrue,
 }exprBool;
-typedef struct TRstack
+typedef struct __TRstack
 {
 	char stack[STACKSIZE];
 	size_t top;
@@ -24,17 +25,17 @@ typedef struct TRstack
 	size_t LP_count;//每当压入( 则加一 , 用于判定栈中有无(
 }TRstack;
 
-typedef union data
+typedef union __data
 {
 	double p_num;
-	long i_num;
+	long long i_num;
 }data;
-typedef struct num
+typedef struct __num
 {
 	data data;
 	char type;// 0 为pnum小数 1为inum整数
 }num;
-typedef struct OPstack
+typedef struct __OPstack
 {
 	num stack[STACKSIZE];
 	size_t top;
@@ -42,15 +43,15 @@ typedef struct OPstack
 }OPstack;
 
 #define PUSH(StackObj,data) do{\
-	StackObj.stack[StackObj.top] = data;\
-	StackObj.top += 1;\
+	StackObj->stack[StackObj->top] = data;\
+	StackObj->top += 1;\
 }while(0)
 
 #define POP(StackObj,data) do{\
-	data = StackObj.stack[StackObj.top -1];\
-	StackObj.top -= 1;\
+	data = StackObj->stack[StackObj->top -1];\
+	StackObj->top -= 1;\
 }while(0)
-#define TOP(StackObj) (StackObj.stack[StackObj.top -1])
+#define TOP(StackObj) (StackObj->stack[StackObj->top -1])
 static STDCAL(int) parser_interge(const char* one_cell)//判断是否为整数
 {
     if(*one_cell=='-')one_cell++;
@@ -137,21 +138,80 @@ STDCAL(exprBool) Prec_judge(char op1, char op2)
 	prec2 = Prec_get(op2);
 	return prec1 >= prec2 ? exprTrue : exprFalse;
 }
+#define GETNUMBER(number,num_p,num_l) do{		\
+		if(number.type == 0)					\
+	{											\
+		num_p = number.data.p_num;				\
+		num_l = 0;								\
+	}											\
+	else										\
+	{											\
+		num_p = 0.0;							\
+		num_l = number.data.i_num;				\
+	}											\
+}while(0)
 STDCAL(void) cacl(OPstack* stkobj,char op)//计算栈中元素与op的映射
 {
-	putchar(op);
-	return;
+	// putchar(op);  //调试
+	size_t iter = 0;
+	num number1;
+	num number2;
+	POP(stkobj,number1);
+	POP(stkobj,number2);
+	double number1_p = 0.0;
+	double number2_p = 0.0;
+	double ret_p = 0.0;
+	long number1_l = 0;
+	long number2_l = 0;
+	long ret_l =0;
+	GETNUMBER(number1,number1_p,number1_l);
+	GETNUMBER(number2,number2_p,number2_l);
+	switch (op)
+	{
+	case '+':
+		ret_p = number1_p + number2_p;
+		ret_l = number1_l + number2_l;
+	break;
+	case '-':
+		ret_p = number1_p - number2_p;
+		ret_l = number1_l - number2_l;
+	break;
+	case '*':
+		ret_l = number1_l * number2_l;
+		ret_p = number1_p * number2_p + number2_l * number1_p + number1_p * number2_p;
+	break;
+	case '/':
+		ret_l = 0;
+		ret_p = (double)number1_l / number2_l + number1_p / number2_p + number2_l / number1_p + number1_p / number2_p;
+	break;
+	}
+	num ret;
+	if(ret_p <= 20*__DBL_EPSILON__)
+	{
+		ret.type = 1;
+		ret.data.i_num = ret_l;
+		// printf("\n%ld\n",ret.data.i_num); //调试
+	}
+	else
+	{
+		ret.type = 0;
+		ret.data.p_num = ret_p + ret_l;
+		// printf("\n%lf\n",ret.data.p_num); //调试
+	}
+	PUSH(stkobj,ret);
 }
-STDCAL(void) eval(const char* expr)
+STDCAL(cell) eval(const char* expr)
 {
-	OPstack numStack;//计算栈
-	numStack.top = 0;
-	memset(numStack.pastfix,'\0',STACKSIZE);
-	TRstack infixStack;//中缀转后缀栈
-	infixStack.LP_count = 0;
-	infixStack.size =STACKSIZE;
-	infixStack.top = 0;
-	memset(infixStack.stack,'\0',STACKSIZE);
+	OPstack numStack__;//计算栈
+	numStack__.top = 0;
+	OPstack* numStack = &numStack__;
+	memset(numStack->pastfix,'\0',STACKSIZE);
+	TRstack infixStack__;//中缀转后缀栈
+	TRstack* infixStack = &infixStack__;
+	infixStack->LP_count = 0;
+	infixStack->size =STACKSIZE;
+	infixStack->top = 0;
+	memset(infixStack->stack,'\0',STACKSIZE);
 	////////////////////////////////////////////////////init
 	const char* parser = expr;
 	char ch = '\0';
@@ -181,24 +241,24 @@ STDCAL(void) eval(const char* expr)
 			{ 
 					num OpNum = parse_num(&parser);
 					PUSH(numStack,OpNum);
-					if(OpNum.type == 0)printf("%lf",OpNum.data.p_num);
-					else if(OpNum.type == 1)printf("%ld",OpNum.data.i_num);
+					// if(OpNum.type == 0)printf("%lf",OpNum.data.p_num);/////调试
+					// else if(OpNum.type == 1)printf("%ld",OpNum.data.i_num);
 				break;
 			}
 			case '(':
 			{
-				infixStack.LP_count++;
+				infixStack->LP_count++;
 				PUSH(infixStack,'(');
 				break;
 			}
 			case ')':
 			{
-				assert(infixStack.LP_count > 0);
+				assert(infixStack->LP_count > 0);
 				char pop_ret = '\0';
 				while(TOP(infixStack) != '(')
 				{
 					POP(infixStack,pop_ret);
-					cacl(&numStack,pop_ret);
+					cacl(numStack,pop_ret);
 				}
 				POP(infixStack,pop_ret);
 				break;
@@ -213,7 +273,7 @@ STDCAL(void) eval(const char* expr)
 					{
 						char pop_ret = '\0';
 						POP(infixStack,pop_ret);
-						cacl(&numStack,pop_ret);
+						cacl(numStack,pop_ret);
 					}
 					PUSH(infixStack,ch);
 				break;
@@ -221,12 +281,28 @@ STDCAL(void) eval(const char* expr)
 		}
 		parser++;
 	}
-	while(infixStack.top > 0)
+	while(infixStack->top > 0) //清空符号栈
 	{
 		char pop_ret = '\0';
 		POP(infixStack,pop_ret);
-		cacl(&numStack,pop_ret);
+		cacl(numStack,pop_ret);
 	}
+	num retnum;
+	POP(numStack,retnum);
+	assert(numStack->top == 0);
+	cell ret;
+	switch (retnum.type)
+	{
+	case 0:
+		ret.type = rfloat;
+		ret.data.float_num = retnum.data.p_num;
+		break;
+	case 1:
+		ret.type = rint;
+		ret.data.integer_num = retnum.data.i_num;
+	default:
+		assert(retnum.type == 1 || retnum.type ==0);
+		break;
+	}
+	return ret;
 }
-#define evall(expr) expr
-
