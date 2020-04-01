@@ -10,7 +10,6 @@ typedef enum matchbool
     mTrue,
 }matchbool;
 #define GETCELL(colobj,index) (colobj->series.cell_table + index)
-
 #define __match_integer_(colobj,index) ((colobj->series.cell_table + index)->data.integer_num)
 #define __match_float_(colobj,index) ((colobj->series.cell_table + index)->data.float_num)
 #define MATCH(dataframe,index,expr,destn) do{\

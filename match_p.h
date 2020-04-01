@@ -13,7 +13,7 @@
     * expr 一个合法的逻辑判断表达式,其中允许有一个变量x ,x的值是列中每个单元的值
     * destn 一个足够大的size_t类型的线性数组.
     */
-    #define MATCH(dataframePtr,index,expr,destn) do{\
+    #define match(dataframePtr,index,expr,destn) do{\
         if(colfind(dataframePtr,index)->coltype == rint)\
         {\
             column* colobj = colfind(dataframePtr,index);\
