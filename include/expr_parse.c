@@ -1,15 +1,12 @@
 /*
  TODO: 解析表达式  计算表达式的值
 */
-#ifndef CSVREADER_H
-    #define CSVREADER_H
-    #include "csvReader.h"
-#endif
 #include "expr_parse.h"
 #include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
 #include "dataframe.h"
+#include "header.h"
 #define STDCAL(type) _cdecl type
 #define STACKSIZE 200
 typedef enum __exprBool
@@ -306,3 +303,4 @@ STDCAL(cell) eval(const char* expr)
 	}
 	return ret;
 }
+

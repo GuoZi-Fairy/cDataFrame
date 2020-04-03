@@ -1,6 +1,7 @@
 #ifndef CSVREADER_H
     #define CSVREADER_H
     #include "csvReader.h"
+    #include "header.h"
 #endif
 typedef enum _num_type
 {

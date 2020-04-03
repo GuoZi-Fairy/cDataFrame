@@ -7,7 +7,8 @@
 #include <Windows.h>
 #include <io.h>
 #include "dataframe.h"
-#define STDCAL(type) type __cdecl
+#include "error.h"
+#include "header.h"
 
 typedef struct parser
 {
@@ -21,19 +22,7 @@ typedef enum _bool_csv{
     cTRUE
 }boolean_csv;
 /*************************************************************/
-typedef struct _error
-{
-    char* error_type;
-    char* error_msg;
-}error;
-static error _index_invild_error = {"index error","The index may "};
-static error _file_read_error = {"file read error","catch a error when reading the file"};
-static error _cell_parser_error = {"cell parse error","please check your data,have a invild token:{\'\\r\',\'\\n\'"};
-static error _token_parser_error = {"token parse error","something wrong in the \',\'"};
-static error _filestream_error = {"file colse error","the file stream colse unsuccessed"};
-static error _cell_type_error = {"Cell type invild","please check this cell's type"};
-static error _file_existence_error = {"file does not exist","please check the file"};
-#define RAISE(ERROR) do{printf("ERROR:\n[%s]:%s\n",ERROR.error_type,ERROR.error_msg);system("pause");system("exit");}while(0)
+
 /*************************************************************/
 static STDCAL(column*) columns_parse(const char* first_line);//传入第一行 解析出列名和索引数 返回一个col序列
 static STDCAL(void) columns_free(column* columns);//释放col序列的内存
@@ -110,25 +99,8 @@ static STDCAL(column*) columns_parse(const char* first_line)
     }
     return header_col;
 }
-static STDCAL(void) columns_free(column* columns)
-{
-    if (columns!=NULL)
-    {
-        columns_free(columns->next_col);
-        free(columns->series.cell_table);
-        free(columns);
-    }
-}
-extern STDCAL(void) dffree(dataframe* df)
-{
-    column* columns = df->col;
-    if (columns!=NULL)
-    {
-        columns_free(columns->next_col);
-        free(columns->series.cell_table);
-        free(columns);
-    }
-}
+
+
 static STDCAL(column*) get_column(column* col_obj,size_t index)
 {
     get_column_recursion://用于取消递归
@@ -401,102 +373,8 @@ extern STDCAL(void) df_to_csv(dataframe* df,const char* path)
     else printf("\n[file stream colse safely]");
 }
 /************************************************************************************/
-extern STDCAL(column*) colfind(dataframe* df,size_t index)
-{
-    column* ret;
-    ret = get_column(df->col,index);
-    return ret;
-}
-extern STDCAL(cell*) cellfind(dataframe* df,size_t col_index,size_t index)
-{
-    cell* ret;
-    column* col_obj = get_column(df->col,col_index);
-    ret = col_obj->series.cell_table + index;
-    return ret;
 
-}
-extern STDCAL(char*) colname(column* col_obj,size_t index)//获取col序列中第index个元素的name
-{
-    get_column_name_recursion://用于取消递归
-    assert(col_obj!=NULL);
-    if (col_obj->index!=index)
-    {
-        col_obj = col_obj->next_col;
-        goto get_column_name_recursion;
-    }
-    else return col_obj->name;
-}
-extern STDCAL(void) colprint(column* col_obj,char sep)//输出col序列
-{
-    while(col_obj!=NULL)
-    {
-        printf("%s%c",col_obj->name,sep);
-        col_obj = col_obj->next_col;
-    }
-    putchar('\n');
-}
-extern STDCAL(void) cellprint(cell* cell_obj)//输出一个cell
-{
-    if(cell_obj==NULL)
-    {
-        printf("NULL CELL");
-    }
-    switch(cell_obj->type)
-    {
-        case rint:
-            printf("%lld",cell_obj->data.integer_num);
-            break;
-        case rfloat:
-            printf("%lf",cell_obj->data.float_num);
-            break;
-        case rchar:
-            printf("%s",cell_obj->data.char_ch);
-            break;
-        case rnan:
-            printf("NAN");
-            break;
-        case rnull:
-            RAISE(_cell_type_error);
-    }
-}
 #define COLLIST_LEN 200
 #define INIT_COLLIST(col_list)
-#define CUTOFF_LINE "------------------------------------------------------------------------------"
-#define OMIT_LINE ".............................................................................."
-static STDCAL(void) foreach_cellprint(dataframe* df, column* collist[200], size_t length, size_t width)
-{
-    size_t wide,len;
-    for(len = 0;len < length;len++)
-    {
-        for(wide =0;wide < width;wide++)
-        {
-            cell* cell_obj = collist[wide]->series.cell_table + len;
-            cellprint(cell_obj);
-            putchar('\t');
-        }
-        putchar('\n');
-    }
-}
-extern STDCAL(void) dfprint(dataframe* df,int preview)//预览  只有0 或 非0
-{
-    size_t wide,len;
-    column* col_list[COLLIST_LEN] = {NULL};
-    column* col_obj = df->col;//拷贝一份col,注:该指针会发生改变,若需链表头，可直接访问df->col
-    size_t iter;
-    for(iter = 0;col_obj!=NULL;iter++)
-    {
-        col_list[iter] = col_obj;
-        col_obj = col_obj->next_col;//此处为col_obj发生改变的地方
-    }
-    colprint(df->col,'\t');
-    if(preview){
-        foreach_cellprint(df,col_list,5,iter);
-        printf(OMIT_LINE);
-    }
-    else foreach_cellprint(df,col_list,df->length,iter);
-    printf("\n[%lldx%lld]\n",df->length,df->width);
-    printf(CUTOFF_LINE);
-    putchar('\n');
 
-}
 /************************************************************************************/

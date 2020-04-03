@@ -3,7 +3,9 @@
     "files.associations": {
         "*.bin": "plaintext",
         "dataframe.h": "c",
-        "csvreader.h": "c"
+        "csvreader.h": "c",
+        "statu_p.h": "c",
+        "error.h": "c"
     },
     "C_Cpp.dimInactiveRegions": false
 }

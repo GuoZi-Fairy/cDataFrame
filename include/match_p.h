@@ -4,6 +4,7 @@
     #include "csvReader.h"
     #include "statu_p.h"
     #include <assert.h>
+    #include "header.h"
     #define __match_integer_(colobj,index) ((colobj->series.cell_table + index)->data.integer_num)
     #define __match_float_(colobj,index) ((colobj->series.cell_table + index)->data.float_num)
     /*

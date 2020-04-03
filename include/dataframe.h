@@ -3,6 +3,8 @@
     #define DATAFRAME_H
     #define COL_NAME_LENGTH_MAX 100
     #include <stdio.h>
+    #include"error.h"
+    #include "header.h"
     typedef enum type //sortation means the priority
     {
         rnull,
@@ -45,4 +47,11 @@
         column* col;
         char calculable;
     }dataframe;
+    extern STDCAL(void) dfprint(dataframe* df,int preview);
+    extern STDCAL(void) colprint(column* col_obj,char sep);
+    extern STDCAL(void) cellprint(cell* cell_obj);
+    extern STDCAL(cell*) cellfind(dataframe* df,size_t col_index,size_t index);
+    extern STDCAL(char*) colname(column* col_obj,size_t index);
+    extern STDCAL(column*) colfind(dataframe* df,size_t index);//获取df中的第index个col对象
+    extern STDCAL(void) dffree(dataframe* df);
 #endif

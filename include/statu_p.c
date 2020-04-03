@@ -2,11 +2,8 @@
 #include "statu_p.h"
 #include <assert.h>
 #include <Windows.h>
-#ifndef CSVREADER_H
-    #define CSVREADER_H
-    #include "csvReader.h"
-#endif
-#define STDCAL(type) _cdecl type
+#include "csvReader.h"
+#include "header.h"
 static STDCAL(void) check_coltype(column* col_obj)
 {
     type ret = rnull;
